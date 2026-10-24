@@ -59,6 +59,48 @@ void bubbleSort(vector<int>& nums) {
 - Stable because equal neighbours are never swapped (`nums[j] > nums[j+1]` is strict).
 - Rarely used in practice — its value is explaining stability and adaptivity.
 
+## Recursive Bubble Sort
+
+The same bubbling idea, expressed recursively: one pass pushes the largest remaining element to
+the end, then the function recurses on the shorter prefix. The `flag` still short-circuits
+already-sorted input.
+
+```cpp
+void helper(vector<int>& nums, int n) {
+    if(n<=0) return;
+    bool flag = 1;
+    for(int j=0;j<n;j++){
+        if(nums[j]>nums[j+1]){
+             swap(nums[j],nums[j+1]);
+             flag=0;
+        }
+    }
+    if(flag) return;
+    helper(nums,n-1);
+}
+
+vector<int> bubbleSort(vector<int>& nums) {
+    int n = nums.size();
+    if(n==0 || n==1) return nums;
+    helper(nums, n-1);
+    return nums;
+}
+```
+
+| Time | Space | Stable | Adaptive | In-place |
+| --- | --- | --- | --- | --- |
+| O(n²) | O(n) | Yes | Yes | Yes |
+
+**Interview notes**
+
+- The O(n) space is the **recursion stack** (depth up to `n`), not a temporary array — that is
+  the only complexity change compared with iterative bubble sort.
+- `helper(nums, n-1)` makes the first pass compare indices `0..n-1`, so `j+1` stays in bounds;
+  each recursive call shrinks the range by one.
+- The `flag` keeps the best case O(n) on sorted input. Without it, every case is O(n²).
+- The wrapper must `return nums` in the empty / single-element case. A bare `return;` in a
+  function returning `vector<int>` will not compile.
+
 ## Selection Sort
 
 Scan the unsorted suffix for the minimum and swap it into position `i`. The sorted prefix grows
