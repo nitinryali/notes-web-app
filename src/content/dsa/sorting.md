@@ -343,16 +343,13 @@ In an interview, write the algorithm when asked; otherwise reach for the library
 | Next permutation | `next_permutation(v.begin(), v.end())` | O(n) amortised |
 | Reverse | `reverse(v.begin(), v.end())` | O(n) |
 
-```cpp
-sort(v.begin(), v.end());                                      // ascending
-sort(v.begin(), v.end(), greater<int>());                      // descending
-sort(v.begin(), v.end(), [](int a, int b) { return a > b; });  // same, explicit comparator
-
-stable_sort(v.begin(), v.end());                               // keeps equal elements in order
-nth_element(v.begin(), v.begin() + k, v.end());                // k-th smallest at index k
-partial_sort(v.begin(), v.begin() + k, v.end());               // k smallest, fully sorted
-is_sorted(v.begin(), v.end());
-```
+- `sort(v.begin(), v.end());` — ascending
+- `sort(v.begin(), v.end(), greater<int>());` — descending
+- `sort(v.begin(), v.end(), [](int a, int b) { return a > b; });` — same, explicit comparator
+- `stable_sort(v.begin(), v.end());` — keeps equal elements in input order
+- `nth_element(v.begin(), v.begin() + k, v.end());` — k-th smallest at index `k`
+- `partial_sort(v.begin(), v.begin() + k, v.end());` — k smallest, fully sorted
+- `is_sorted(v.begin(), v.end());` — O(n) check
 
 **Interview notes**
 

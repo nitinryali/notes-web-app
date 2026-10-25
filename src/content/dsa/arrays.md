@@ -75,20 +75,9 @@ public:
 - Sorting first would cost O(n log n); the two-variable single pass keeps it O(n) with O(1) space.
 - Edge cases worth checking: empty array, one element, duplicates, all negative, `INT_MIN` values.
 
-**STL shortcut**
-
-```cpp
-int secondLargest(vector<int>& nums) {
-    vector<int> v = nums;
-    sort(v.begin(), v.end());
-    v.erase(unique(v.begin(), v.end()), v.end());
-    return v.size() < 2 ? -1 : v[v.size() - 2];
-}
-```
-
-O(n log n) time, O(n) space — only worth it when you already need the sorted array. For the k-th
-**largest with duplicates**, `nth_element(v.begin(), v.begin() + k - 1, v.end(), greater<int>())` is
-O(n) average and puts the answer at index `k - 1`.
+**STL shortcut** — `nth_element(v.begin(), v.begin() + 1, v.end(), greater<int>());` is O(n) average
+and puts the second largest at index `1`. For the second **distinct** value, dedupe first with
+`sort(v.begin(), v.end());` and `v.erase(unique(v.begin(), v.end()), v.end());`.
 
 ## Max Consecutive Ones
 
@@ -183,18 +172,9 @@ public:
 - Example: `[1,2,3,4,5]` left rotated by `2` → `[3,4,5,1,2]`; right rotated by `2` →
   `[4,5,1,2,3]`.
 
-**STL shortcut**
-
-```cpp
-// left rotate by k
-rotate(nums.begin(), nums.begin() + k, nums.end());
-
-// right rotate by k
-rotate(nums.begin(), nums.end() - k, nums.end());
-```
-
-`std::rotate` performs the same three-reversal dance internally: O(n) time, O(1) space. Keep the
-`n == 0` guard before `k %= n`, then both calls are safe.
+**STL shortcut** — `rotate(nums.begin(), nums.begin() + k, nums.end());` for a left rotation,
+`rotate(nums.begin(), nums.end() - k, nums.end());` for a right rotation. O(n) time, O(1) space;
+keep the `n == 0` guard before `k %= n`.
 
 ## Move Zeroes
 
@@ -235,22 +215,10 @@ public:
 - Avoid `erase` inside the loop — each erase is O(n) and shifts the remaining elements, making the
   whole thing O(n²).
 
-**STL shortcut**
-
-```cpp
-// erase-remove idiom: O(n) time, O(1) extra space
-auto newEnd = remove(nums.begin(), nums.end(), 0);
-fill(newEnd, nums.end(), 0);
-```
-
-`remove` compacts the non-zero elements to the front in their original order and returns the new
-logical end; `fill` then overwrites the tail with zeros. The size never changes, so this is in place.
-
-A one-liner with the same result but O(n) auxiliary space:
-
-```cpp
-stable_partition(nums.begin(), nums.end(), [](int x) { return x != 0; });
-```
+**STL shortcut** — `stable_partition(nums.begin(), nums.end(), [](int x) { return x != 0; });` keeps
+the order in O(n) time and O(n) space. The O(1)-space erase-remove one-liner is
+`fill(remove(nums.begin(), nums.end(), 0), nums.end(), 0);` — `remove` compacts the non-zeros to the
+front and returns the new logical end, then `fill` zeros the tail.
 
 ## Remove Duplicates from Sorted Array
 
@@ -292,16 +260,8 @@ public:
   values in O(n) and the `erase` only trims the stale tail, so nothing is shifted.
 - The same read/write-pointer pattern solves "remove element" and "move zeroes".
 
-**STL shortcut**
-
-```cpp
-nums.erase(unique(nums.begin(), nums.end()), nums.end());
-return nums.size();
-```
-
-`unique` keeps the first element of every equal run and returns the new logical end; `erase` trims
-the stale tail without shifting anything. O(n) time, O(1) auxiliary space. It relies on the input
-being sorted — on unsorted data, sort first.
+**STL shortcut** — `nums.erase(unique(nums.begin(), nums.end()), nums.end());` then
+`return nums.size();` — O(n) time, O(1) auxiliary space, requires sorted input.
 
 ## Missing Number
 
@@ -338,23 +298,9 @@ int missingNumber(vector<int>& nums) {
 - Edge cases: empty array (returns `0`), missing `0`, missing `n`.
 - Another O(1)-space option is cyclic sort, when the values are exactly `0..n` (or `1..n`).
 
-**STL shortcut**
-
-```cpp
-int n = nums.size();
-
-// sum formula — 0LL keeps accumulate from overflowing int
-long long total = 1LL * n * (n + 1) / 2;
-return total - accumulate(nums.begin(), nums.end(), 0LL);
-
-// XOR version — bit_xor<int> is in <functional>
-int x = 0;
-for (int i = 1; i <= n; i++) x ^= i;
-return accumulate(nums.begin(), nums.end(), x, bit_xor<int>());
-```
-
-Both are O(n) time and O(1) space. The sum version is shorter but needs a 64-bit accumulator; the XOR
-version never overflows.
+**STL shortcut** — `return 1LL * n * (n + 1) / 2 - accumulate(nums.begin(), nums.end(), 0LL);` is
+O(n) time and O(1) space, and the `0LL` keeps `accumulate` from overflowing `int`. XOR alternative:
+`accumulate(nums.begin(), nums.end(), 0, bit_xor<int>())` folded with the XOR of `1..n`.
 
 ## Union of Two Sorted Arrays
 
@@ -424,17 +370,9 @@ public:
 - In C++, `std::set_union` does this in one call, but it assumes both ranges are sorted and still
   requires the output container.
 
-**STL shortcut**
-
-```cpp
-vector<int> ans;
-set_union(nums1.begin(), nums1.end(), nums2.begin(), nums2.end(), back_inserter(ans));
-ans.erase(unique(ans.begin(), ans.end()), ans.end());   // distinct values only
-```
-
-O(n + m) time. `set_union` already merges in order, but it keeps a value twice when it appears in
-both inputs, so the `unique`/`erase` pair is what produces the distinct union. Needs
-`<algorithm>` and `<iterator>` (`back_inserter`).
+**STL shortcut** — `set_union(nums1.begin(), nums1.end(), nums2.begin(), nums2.end(), back_inserter(ans));`
+merges two sorted ranges in O(n + m). Add `ans.erase(unique(ans.begin(), ans.end()), ans.end());` for
+distinct values, since `set_union` keeps a duplicate that appears in both inputs.
 
 ## Intersection of Two Sorted Arrays
 
@@ -489,14 +427,6 @@ public:
   the minimum count for each key.
 - In C++, `std::set_intersection` does the same thing given sorted ranges.
 
-**STL shortcut**
-
-```cpp
-vector<int> ans;
-set_intersection(nums1.begin(), nums1.end(), nums2.begin(), nums2.end(), back_inserter(ans));
-// distinct values only:
-ans.erase(unique(ans.begin(), ans.end()), ans.end());
-```
-
-O(n + m) time, same multiplicity behaviour as the two-pointer version above. Both inputs must be
-sorted, and the output needs room — `back_inserter` handles that.
+**STL shortcut** — `set_intersection(nums1.begin(), nums1.end(), nums2.begin(), nums2.end(), back_inserter(ans));`
+is O(n + m) with the same multiplicity behaviour as the two-pointer version. Both inputs must be
+sorted; add `ans.erase(unique(ans.begin(), ans.end()), ans.end());` for distinct values.
