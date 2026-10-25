@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
@@ -78,6 +78,155 @@ function CodeBlock({ children }: { children?: ReactNode }) {
   )
 }
 
+interface Tab {
+  label: string
+  lang: string
+  code: string
+}
+
+type Segment = { kind: 'markdown'; content: string } | { kind: 'tabs'; tabs: Tab[] }
+
+const FENCE_OPEN = /^\s{0,3}(`{3,}|~{3,})\s*([\w+-]*)\s*(.*)$/
+const FENCE_CLOSE = /^\s{0,3}(`{3,}|~{3,})\s*$/
+
+function tabLabel(meta: string): string | null {
+  const match = /\btab\s*=\s*"([^"]+)"/.exec(meta) ?? /\btab\s*=\s*'([^']+)'/.exec(meta)
+  return match ? match[1].trim() : null
+}
+
+/**
+ * Splits note markdown into plain chunks and runs of consecutive fenced code blocks that carry
+ * `tab="Label"` in their info string. Each run becomes one tabbed code widget.
+ */
+function splitSegments(markdown: string): Segment[] {
+  const lines = markdown.split('\n')
+  const segments: Segment[] = []
+  let markdownLines: string[] = []
+  let pendingTabs: Tab[] = []
+
+  const flushTabs = () => {
+    if (pendingTabs.length > 0) {
+      segments.push({ kind: 'tabs', tabs: pendingTabs })
+      pendingTabs = []
+    }
+  }
+
+  const flushMarkdown = () => {
+    const content = markdownLines.join('\n')
+    if (content.trim()) segments.push({ kind: 'markdown', content })
+    markdownLines = []
+  }
+
+  let index = 0
+  while (index < lines.length) {
+    const open = FENCE_OPEN.exec(lines[index])
+    if (!open) {
+      if (pendingTabs.length > 0 && lines[index].trim() !== '') flushTabs()
+      markdownLines.push(lines[index])
+      index += 1
+      continue
+    }
+
+    const fence = open[1]
+    const language = open[2]
+    const label = tabLabel(open[3])
+
+    const body: string[] = []
+    let close = index + 1
+    while (close < lines.length) {
+      const marker = FENCE_CLOSE.exec(lines[close])
+      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length) break
+      body.push(lines[close])
+      close += 1
+    }
+
+    if (close >= lines.length) {
+      // Unterminated fence — leave the rest untouched.
+      markdownLines.push(...lines.slice(index))
+      break
+    }
+
+    if (label) {
+      flushMarkdown()
+      pendingTabs.push({ label, lang: language || 'text', code: body.join('\n') })
+    } else {
+      flushTabs()
+      markdownLines.push(...lines.slice(index, close + 1))
+    }
+
+    index = close + 1
+  }
+
+  flushMarkdown()
+  flushTabs()
+  return segments
+}
+
+function CodeTabs({ tabs, components }: { tabs: Tab[]; components: Components }) {
+  const [active, setActive] = useState(0)
+  const groupId = useId()
+  const current = tabs[Math.min(active, tabs.length - 1)]
+
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const last = tabs.length - 1
+    let next = index
+
+    if (event.key === 'ArrowRight') next = index === last ? 0 : index + 1
+    else if (event.key === 'ArrowLeft') next = index === 0 ? last : index - 1
+    else if (event.key === 'Home') next = 0
+    else if (event.key === 'End') next = last
+    else return
+
+    event.preventDefault()
+    setActive(next)
+    const buttons =
+      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+    buttons?.[next]?.focus()
+  }
+
+  return (
+    <div className="code-tabs">
+      <div className="code-tablist" role="tablist" aria-label="Code variants">
+        {tabs.map((tab, index) => {
+          const selected = index === active
+
+          return (
+            <button
+              key={`${tab.label}-${index}`}
+              type="button"
+              role="tab"
+              id={`${groupId}-tab-${index}`}
+              aria-selected={selected}
+              aria-controls={`${groupId}-panel`}
+              tabIndex={selected ? 0 : -1}
+              className={`code-tab${selected ? ' is-active' : ''}`}
+              onClick={() => setActive(index)}
+              onKeyDown={(event) => onKeyDown(event, index)}
+            >
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
+
+      <div
+        id={`${groupId}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${groupId}-tab-${active}`}
+        tabIndex={0}
+      >
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[[rehypeHighlight, { detect: false, ignoreMissing: true }]]}
+          components={components}
+        >
+          {`\`\`\`${current.lang}\n${current.code}\n\`\`\``}
+        </ReactMarkdown>
+      </div>
+    </div>
+  )
+}
+
 function makeHeading(level: 2 | 3, slug: string) {
   return function Heading({ children }: { children?: ReactNode }) {
     const id = slugify(textOf(children))
@@ -95,6 +244,8 @@ function makeHeading(level: 2 | 3, slug: string) {
 }
 
 export function Markdown({ content, slug }: { content: string; slug: string }) {
+  const segments = useMemo(() => splitSegments(content), [content])
+
   const components: Components = {
     h2: makeHeading(2, slug),
     h3: makeHeading(3, slug),
@@ -122,13 +273,20 @@ export function Markdown({ content, slug }: { content: string; slug: string }) {
 
   return (
     <div className="prose">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[[rehypeHighlight, { detect: false, ignoreMissing: true }]]}
-        components={components}
-      >
-        {content}
-      </ReactMarkdown>
+      {segments.map((segment, index) =>
+        segment.kind === 'tabs' ? (
+          <CodeTabs key={`tabs-${index}`} tabs={segment.tabs} components={components} />
+        ) : (
+          <ReactMarkdown
+            key={`markdown-${index}`}
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[[rehypeHighlight, { detect: false, ignoreMissing: true }]]}
+            components={components}
+          >
+            {segment.content}
+          </ReactMarkdown>
+        ),
+      )}
     </div>
   )
 }

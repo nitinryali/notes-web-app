@@ -266,10 +266,9 @@ public:
 ## Missing Number
 
 Given an array of `n` distinct numbers from the range `[0, n]`, find the one number that is missing.
-XOR everything in `1..n` and everything in the array; equal values cancel, leaving the missing
-number.
+Two solutions, both O(n) time and O(1) space — switch tabs to compare them.
 
-```cpp
+```cpp tab="XOR"
 int missingNumber(vector<int>& nums) {
     int xor1 = 0, xor2 = 0;
 
@@ -283,6 +282,15 @@ int missingNumber(vector<int>& nums) {
 }
 ```
 
+```cpp tab="Sum formula"
+int missingNumber(vector<int>& nums) {
+    int n = nums.size();
+    int nSum = (n * (n + 1)) / 2;
+    int numSum = accumulate(nums.begin(), nums.end(), 0);
+    return nSum - numSum;
+}
+```
+
 | Time | Space | In-place |
 | --- | --- | --- |
 | O(n) | O(1) | Yes |
@@ -293,8 +301,8 @@ int missingNumber(vector<int>& nums) {
   ranges cancels, so the result is the missing number.
 - The array holds `n` values from `0..n`; `0` contributes nothing to the XOR, which is why `xor1`
   can be built from `1..n` while `xor2` scans the array.
-- The sum formula `n * (n + 1) / 2 - sum(nums)` is also O(n) / O(1), but it can overflow for large
-  `n`; use `long long` or prefer XOR.
+- The sum version is shorter, but `n * (n + 1)` overflows `int` once `n` is around 46,341. Cast to
+  `long long` (`1LL * n * (n + 1) / 2`) and seed `accumulate` with `0LL` for large inputs.
 - Edge cases: empty array (returns `0`), missing `0`, missing `n`.
 - Another O(1)-space option is cyclic sort, when the values are exactly `0..n` (or `1..n`).
 

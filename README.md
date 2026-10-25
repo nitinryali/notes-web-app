@@ -65,6 +65,25 @@ the table of contents. The URL becomes `#/java/collections`.
 - `updated` is optional and accepts `YYYY-MM-DD`.
 - Use fenced code blocks with a language, e.g. ` ```cpp ` or ` ```java `.
 
+### Tabbed code blocks
+
+To show alternative solutions behind a tab switch, give consecutive fenced blocks a `tab` label:
+
+````md
+```cpp tab="XOR"
+int missingNumber(vector<int>& nums) { /* ... */ }
+```
+
+```cpp tab="Sum formula"
+int missingNumber(vector<int>& nums) { /* ... */ }
+```
+````
+
+Consecutive blocks with `tab="..."` are merged into one code widget with a tab bar; blank lines
+between them are fine. The language still comes from the fence (`cpp`, `java`, …), and each tab keeps
+syntax highlighting and its own copy button. A group ends at the first block that has no `tab`
+label or at the next paragraph.
+
 ## Deploy to GitHub Pages
 
 The included workflow builds the site and publishes it with GitHub Actions.

@@ -151,7 +151,7 @@ function extractHeadings(markdown: string): Heading[] {
 
 export function toPlainText(markdown: string): string {
   return markdown
-    .replace(/```[a-z]*\n?/gi, ' ')
+    .replace(/```[^\n]*\n?/g, ' ')
     .replace(/`/g, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
