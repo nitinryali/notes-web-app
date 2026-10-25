@@ -611,3 +611,55 @@ public:
   result is counted.
 - `std::reverse` lives in `<algorithm>`; the running maximum can also be folded with
   `accumulate` over a reversed copy, but that is less readable here.
+
+## Rearrange Array by Sign
+
+Place every positive value at an even index and every negative value at an odd index, keeping the
+relative order of each group. With equal counts, two write pointers — `0` for positives and `1` for
+negatives, each advancing by 2 — fill the answer in one pass.
+
+```cpp
+class Solution {
+public:
+    vector<int> rearrangeArray(vector<int>& nums) {
+        int n = nums.size();
+        vector<int> ans(n, 0);
+
+        int posIndex = 0, negIndex = 1;
+
+        for (int i = 0; i < n; i++) {
+            if (nums[i] < 0) {
+                ans[negIndex] = nums[i];
+                negIndex += 2;
+            } else {
+                ans[posIndex] = nums[i];
+                posIndex += 2;
+            }
+        }
+
+        return ans;
+    }
+};
+```
+
+| Time | Space | In-place | Order preserved |
+| --- | --- | --- | --- |
+| O(n) | O(n) | No | Yes |
+
+**Interview notes**
+
+- The interleaving is implicit in the pointers: positives land at `0, 2, 4, …` and negatives at
+  `1, 3, 5, …`, so each group keeps its original order without any extra bookkeeping.
+- This assumes **equal numbers of positives and negatives** (the LeetCode guarantee). With more of
+  one sign, `posIndex` or `negIndex` runs past `n - 1` and the write is out of bounds — the problem
+  then needs a different strategy (e.g. collect each sign into its own vector and interleave as far
+  as possible).
+- `nums[i] < 0` means `0` is treated as non-negative and takes an even slot. If the definition of
+  "positive" matters, compare with `> 0` and handle zeros separately.
+- The output is O(n) by necessity — the result is a permutation of the input, and the input order
+  must not be destroyed.
+- The `ans(n, 0)` initialisation is only defensive; every slot is written when the counts are equal.
+- In-place alternatives exist only when relative order does not matter: a two-pointer pass that
+  swaps a misplaced positive with a misplaced negative.
+- `stable_partition` separates the signs but does **not** interleave them, so it does not solve this
+  version of the problem.
