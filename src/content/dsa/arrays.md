@@ -438,3 +438,126 @@ public:
 **STL shortcut** — `set_intersection(nums1.begin(), nums1.end(), nums2.begin(), nums2.end(), back_inserter(ans));`
 is O(n + m) with the same multiplicity behaviour as the two-pointer version. Both inputs must be
 sorted; add `ans.erase(unique(ans.begin(), ans.end()), ans.end());` for distinct values.
+
+## Majority Element
+
+Return the element that appears more than `n/2` times, or `-1` when none does. Boyer–Moore voting
+keeps a candidate and a balance: a matching value increments the balance, a different one decrements
+it, and a zero balance adopts the next value as the candidate. A second pass verifies the candidate,
+which is what makes the `-1` case correct.
+
+```cpp
+class Solution {
+public:
+    int majorityElement(vector<int>& nums) {
+        int c = 0;
+        int cur = 0;
+
+        for (auto it : nums) {
+            if (c == 0) {
+                cur = it;
+                c++;
+            } else if (cur == it) {
+                c++;
+            } else {
+                c--;
+            }
+        }
+
+        int cnt1 = 0;
+        for (auto it : nums) {
+            if (it == cur) cnt1++;
+        }
+
+        if (cnt1 > (nums.size() / 2)) return cur;
+        return -1;
+    }
+};
+```
+
+| Time | Space | Passes |
+| --- | --- | --- |
+| O(n) | O(1) | 2 |
+
+**Interview notes**
+
+- The voting pass is O(n) with O(1) space. The **verification pass is required** because the
+  candidate is only guaranteed to be the majority when one actually exists — without it, `[1,2,3]`
+  would return `3`.
+- `c` is a balance, not a count: pairs of different values cancel out, so a true majority survives
+  because it has more than half the votes.
+- `int cur = 0;` avoids an uninitialised read; the original snippet declared `int cur;` and only
+  assigned it inside the loop.
+- `nums.size() / 2` is integer division, so the test is `> n/2` — for `n = 5` that means at least 3
+  occurrences.
+- Empty array: the loop does not run, `cnt1` stays `0`, and `0 > 0` is false → returns `-1`.
+- Alternatives: a hash map is O(n) time but O(n) space; sorting is O(n log n) and leaves the answer
+  at index `n/2`. Boyer–Moore is the O(1)-space answer.
+- The same idea generalises to "majority element II" (more than `n/3`) with two candidates and two
+  balances — see the n/k version below.
+
+**STL shortcut** — `nth_element(nums.begin(), nums.begin() + nums.size() / 2, nums.end());` puts the
+majority candidate at index `n/2` in O(n) average; then verify it with
+`count(nums.begin(), nums.end(), nums[nums.size() / 2]) > nums.size() / 2`.
+
+### Generalisation: more than n/k
+
+At most `k - 1` values can appear more than `n/k` times, so keep `k - 1` candidate slots. Match a
+value against the candidates, fill a free slot when one exists, otherwise decrement every counter.
+The cancelling argument is unchanged: `k` different values cancel one unit from each slot.
+
+```cpp
+class Solution {
+public:
+    vector<int> majorityElements(vector<int>& nums, int k) {
+        if (k < 2) return {};
+
+        int n = nums.size();
+        int slots = k - 1;
+        vector<int> cand(slots, 0), cnt(slots, 0);
+
+        for (int num : nums) {
+            int matched = -1;
+            for (int i = 0; i < slots; i++) {
+                if (cnt[i] > 0 && cand[i] == num) { matched = i; break; }
+            }
+            if (matched != -1) { cnt[matched]++; continue; }
+
+            int freeSlot = -1;
+            for (int i = 0; i < slots; i++) {
+                if (cnt[i] == 0) { freeSlot = i; break; }
+            }
+            if (freeSlot != -1) { cand[freeSlot] = num; cnt[freeSlot] = 1; continue; }
+
+            for (int i = 0; i < slots; i++) cnt[i]--;
+        }
+
+        vector<int> ans;
+        for (int i = 0; i < slots; i++) {
+            if (cnt[i] == 0) continue;
+            int total = count(nums.begin(), nums.end(), cand[i]);
+            if (total > n / k && find(ans.begin(), ans.end(), cand[i]) == ans.end()) {
+                ans.push_back(cand[i]);
+            }
+        }
+        return ans;
+    }
+};
+```
+
+| Time | Space | Passes |
+| --- | --- | --- |
+| O(n·k) | O(k) | 2 |
+
+**Interview notes**
+
+- `k = 3` gives the two-candidate version of "majority element II": `[1,1,1,3,3,2,2,2]` → `[1,2]`.
+- At most `k - 1` answers can exist, which is exactly why `k - 1` slots are enough.
+- Verification is still mandatory — candidates are only guaranteed winners when a value really
+  exceeds `n/k`.
+- With fixed `k` (2 or 3) the loop over slots is constant, so the bound is O(n); the O(n·k) form is
+  what matters when `k` is part of the input.
+- `count` and `find` keep the verification pass short; both live in `<algorithm>`.
+- Use `n / k` with integer division for the threshold: for `n = 9, k = 3`, a value needs at least 4
+  occurrences.
+- `k < 2` is guarded because `k - 1` slots and the `n/k` threshold are meaningless there.
