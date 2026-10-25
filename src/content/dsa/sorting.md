@@ -3,13 +3,14 @@ title: Sorting Algorithms
 description: Bubble, selection, insertion, cyclic, merge and quick sort — implementations, complexities and the trade-offs interviewers probe.
 section: dsa
 order: 1
-tags: [sorting, arrays, complexity]
-updated: 2026-10-24
+tags: [sorting, arrays, complexity, stl]
+updated: 2026-10-25
 ---
 
 Sorting questions test whether you can reason about **stability, adaptivity and space**, not
 just recite an algorithm. These are the six implementations worth being able to write from
-memory, followed by the comparison table I revise before an interview.
+memory, followed by the comparison table I revise before an interview. In real code you call
+`std::sort` — the STL shortcuts at the end are what you actually ship.
 
 ## At a glance
 
@@ -321,4 +322,53 @@ vector<int> quickie(vector<int> nums){
 - In practice the fastest general-purpose in-place sort — good cache locality and low constant
   factors. `std::sort` uses introsort (quick sort + heap sort + insertion sort).
 - The same partition routine powers **quickselect** for "kth largest element" in expected O(n).
+
+## STL shortcuts
+
+In an interview, write the algorithm when asked; otherwise reach for the library.
+
+| Need | Call | Cost / notes |
+| --- | --- | --- |
+| Ascending sort | `sort(v.begin(), v.end())` | Introsort (quick + heap + insertion), O(n log n), unstable |
+| Descending | `sort(v.begin(), v.end(), greater<int>())` | or `sort(v.rbegin(), v.rend())` |
+| Stable sort | `stable_sort(v.begin(), v.end())` | Timsort / merge, O(n log n), O(n) extra |
+| Custom order | `sort(v.begin(), v.end(), cmp)` | `cmp` must be a strict weak ordering |
+| k-th smallest | `nth_element(v.begin(), v.begin() + k, v.end())` | O(n) average; only index `k` is guaranteed |
+| k smallest, sorted | `partial_sort(v.begin(), v.begin() + k, v.end())` | O(n log k) |
+| Sorted check | `is_sorted(v.begin(), v.end())` | O(n) |
+| Min / max | `*min_element(...)`, `*max_element(...)` | O(n) |
+| Dedupe sorted range | `v.erase(unique(v.begin(), v.end()), v.end())` | O(n); `unique` only compacts |
+| Merge sorted ranges | `merge(a.begin(), a.end(), b.begin(), b.end(), back_inserter(out))` | O(n + m) |
+| Union / intersection | `set_union`, `set_intersection` | sorted inputs, output via `back_inserter` |
+| Next permutation | `next_permutation(v.begin(), v.end())` | O(n) amortised |
+| Reverse | `reverse(v.begin(), v.end())` | O(n) |
+
+```cpp
+sort(v.begin(), v.end());                                      // ascending
+sort(v.begin(), v.end(), greater<int>());                      // descending
+sort(v.begin(), v.end(), [](int a, int b) { return a > b; });  // same, explicit comparator
+
+stable_sort(v.begin(), v.end());                               // keeps equal elements in order
+nth_element(v.begin(), v.begin() + k, v.end());                // k-th smallest at index k
+partial_sort(v.begin(), v.begin() + k, v.end());               // k smallest, fully sorted
+is_sorted(v.begin(), v.end());
+```
+
+**Interview notes**
+
+- `std::sort` is **not stable**. If equal keys must keep their input order (sorting records by one
+  field), use `stable_sort`.
+- The comparator must return `false` for equal elements: use `<` for ascending, never `<=`. A `<=`
+  comparator violates strict weak ordering and can crash or loop in libstdc++.
+- `nth_element` is the shortcut for "k-th largest / smallest" — add `greater<int>()` for largest.
+  It does not sort the rest, which is the point.
+- `partial_sort` is the shortcut for "top k" when the `k` results must be ordered.
+- `sort` on `vector<pair<int,int>>` sorts lexicographically by first, then second — no comparator
+  needed.
+- Java equivalents: `Arrays.sort(int[])` is dual-pivot quicksort (unstable), while
+  `Arrays.sort(Object[])` and `Collections.sort` are Timsort (stable). Descending order needs boxed
+  types: `Arrays.sort(arr, Collections.reverseOrder())`.
+- All of these are O(n log n) comparisons at worst, except `nth_element` (O(n) average) and
+  `partial_sort` (O(n log k)). Write count matters separately: introsort does O(n log n) swaps,
+  selection sort at most `n - 1`.
 
