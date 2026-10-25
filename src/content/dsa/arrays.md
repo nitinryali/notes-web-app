@@ -801,3 +801,52 @@ public:
   when only one cell is needed.
 - Guard `r < 0 || r > n` (return `0`) if the inputs can be out of range: the symmetry step turns
   `n = 0, r = 1` into `r = -1`, and the function would return `1` instead of `0`.
+
+### Pascal's Triangle Row
+
+Return the whole row `r` (1-indexed) by calling `nCr` once per column.
+
+```cpp
+class Solution {
+public:
+    vector<int> pascalTriangleII(int r) {
+        vector<int> ans;
+        for (int i = 0; i < r; i++) {
+            ans.push_back(nCr(r - 1, r - i - 1));
+        }
+        return ans;
+    }
+
+    int nCr(int n, int r) {
+        if (r > n - r) r = n - r;
+        if (r == 1) return n;
+        int res = 1;
+        for (int i = 0; i < r; i++) {
+            res = res * (n - i);
+            res = res / (i + 1);
+        }
+        return res;
+    }
+};
+```
+
+| Time | Space (extra) | Space (with output) | `nCr` calls |
+| --- | --- | --- | --- |
+| O(r²) | O(1) | O(r) | r |
+
+**Interview notes**
+
+- `nCr(r - 1, r - i - 1)` walks the row from the **right**: `C(n, n), C(n, n-1), …, C(n, 0)`.
+  Pascal's rows are palindromic, so the reversed order is still correct — but `nCr(r - 1, i)` says
+  the same thing more directly.
+- Row `r` has exactly `r` elements; the loop bound and the `r - 1` passed to `nCr` are the two
+  places an off-by-one shows up.
+- Each `nCr` call costs `O(min(i, n - i))`, so `r` calls make the whole row **O(r²)**, not O(r).
+- Faster: build the row in one pass with the ratio recurrence
+  `C(n, k) = C(n, k - 1) * (n - k + 1) / k`, starting from `1`. That is O(r) time and O(r) space,
+  and avoids the repeated work.
+- The in-place DP alternative is `row[j] += row[j - 1]` iterated **backwards** (`j` from `i - 1`
+  down to `1`): O(r²) time but O(1) extra space. Going forwards would read values already updated
+  for the current row.
+- The same `int` overflow applies here — `nCr` breaks around `r ≈ 30` without `long long`.
+- LeetCode 119 (`getRow`) is 0-indexed, so pass `r = rowIndex + 1` to this 1-indexed version.
