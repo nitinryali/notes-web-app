@@ -561,3 +561,53 @@ public:
 - Use `n / k` with integer division for the threshold: for `n = 9, k = 3`, a value needs at least 4
   occurrences.
 - `k < 2` is guarded because `k - 1` slots and the `n/k` threshold are meaningless there.
+
+## Leaders in an Array
+
+An element is a **leader** if it is greater than every element to its right; the rightmost element is
+always one. Scan from right to left while tracking the maximum seen so far — anything that beats it
+becomes a leader. The results are collected right-to-left, so they are reversed at the end.
+
+```cpp
+class Solution {
+public:
+    vector<int> leaders(vector<int>& nums) {
+        vector<int> ans;
+        int n = nums.size();
+        if (n == 0) return ans;
+
+        int last_el = nums[n - 1];
+        ans.push_back(last_el);
+
+        for (int i = n - 2; i >= 0; i--) {
+            if (nums[i] > last_el) {
+                last_el = nums[i];
+                ans.push_back(last_el);
+            }
+        }
+
+        reverse(ans.begin(), ans.end());
+        return ans;
+    }
+};
+```
+
+| Time | Space (extra) | Space (with output) | Passes |
+| --- | --- | --- | --- |
+| O(n) | O(1) | O(n) | 1 |
+
+**Interview notes**
+
+- `last_el` is the running **suffix maximum**, so the comparison `nums[i] > last_el` is exactly the
+  leader condition.
+- The comparison is strict, so duplicates of the current maximum are not leaders: `[5, 5]` → `[5]`.
+  If the problem defines a leader as "greater than or equal to everything on the right", use `>=`.
+- `ans` is built from the right, hence the final `reverse`. Without it the answer comes back in
+  ascending order instead of the original left-to-right order.
+- The empty-array guard is required before `nums[n - 1]`, otherwise the index underflows.
+- One pass, O(1) auxiliary space — better than precomputing a suffix-maximum array, which costs O(n)
+  extra.
+- The output itself can be O(n) (e.g. a strictly decreasing array), so total space is O(n) when the
+  result is counted.
+- `std::reverse` lives in `<algorithm>`; the running maximum can also be folded with
+  `accumulate` over a reversed copy, but that is less readable here.
