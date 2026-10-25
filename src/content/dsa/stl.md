@@ -159,6 +159,7 @@ the container's size.
 ```cpp
 accumulate(v.begin(), v.end(), 0);                    // sum, O(n)
 accumulate(v.begin(), v.end(), 0LL);                  // 64-bit seed avoids overflow
+accumulate(v.begin(), v.end(), 1, multiplies<int>()); // product, <functional>
 accumulate(v.begin(), v.end(), 0, bit_xor<int>());    // XOR fold, <functional>
 *max_element(v.begin(), v.end());
 *min_element(v.begin(), v.end());
@@ -166,7 +167,11 @@ iota(v.begin(), v.end(), 1);                          // 1, 2, 3, ...
 next_permutation(v.begin(), v.end());                 // next lexicographic order
 ```
 
-- `accumulate`'s initial value decides the type; `0` sums in `int` and can overflow.
+- The seed is the identity for the operation: `0` for `plus`, `1` for `multiplies`, `0` for
+  `bit_xor`. Passing the wrong seed silently changes the result.
+- `plus`, `multiplies`, `bit_xor` and friends live in `<functional>`.
+- `accumulate`'s initial value decides the type; `0` sums in `int` and can overflow, so seed with
+  `0LL` (or `1LL` for a product) when the result may be large.
 - `next_permutation` returns `false` when it wraps to the first permutation.
 - `gcd` / `lcm` live in `<numeric>`.
 
