@@ -752,7 +752,11 @@ bottom-row loop would then run with `bottom = 0` and `top = 1`, and without the 
 - The traversal is clockwise starting at the top-left corner; counter-clockwise is the same code
   with the loop order reversed.
 
-## Pascal's Triangle Element
+## Pascal's Triangle
+
+Three variants, all built on `nCr`: a single element, one row, and the whole triangle.
+
+### Single Element
 
 The value at row `r`, column `c` of Pascal's triangle (1-indexed) is `C(r-1, c-1)`. Compute it
 multiplicatively in `O(min(c, r - c))` steps instead of building the whole triangle.
@@ -850,3 +854,57 @@ public:
   for the current row.
 - The same `int` overflow applies here — `nCr` breaks around `r ≈ 30` without `long long`.
 - LeetCode 119 (`getRow`) is 0-indexed, so pass `r = rowIndex + 1` to this 1-indexed version.
+
+### Full Triangle
+
+Generate all `numRows` rows. Row `i` (1-indexed) has `i` elements, and the element at column `j` is
+`C(i-1, j-1)`, so the same `nCr` helper fills the whole triangle.
+
+```cpp
+class Solution {
+public:
+    int nCr(int n, int r) {
+        if (r > n - r) r = n - r;
+        long long res = 1;
+        for (int i = 0; i < r; i++) {
+            res = res * (n - i);
+            res = res / (i + 1);
+        }
+        return res;
+    }
+
+    vector<vector<int>> pascalTriangleIII(int numRows) {
+        int n = numRows;
+        vector<vector<int>> ans;
+
+        for (int i = 1; i <= n; i++) {
+            vector<int> temp;
+            for (int j = 1; j <= i; j++) {
+                temp.push_back(nCr(i - 1, j - 1));
+            }
+            ans.push_back(temp);
+        }
+
+        return ans;
+    }
+};
+```
+
+| Time | Space (extra) | Space (with output) | `nCr` calls |
+| --- | --- | --- | --- |
+| O(n³) | O(1) | O(n²) | n(n+1)/2 |
+
+**Interview notes**
+
+- `res` is `long long` here, which fixes the intermediate-overflow problem from the single-element
+  version. Casting back to `int` is safe under the usual constraint `numRows ≤ 30`.
+- The triangle has `n(n+1)/2` elements and each `nCr` call costs O(row length), so this is **O(n³)**.
+  Interviewers usually expect the O(n²) DP instead.
+- O(n²) DP: `ans[i][j] = ans[i-1][j-1] + ans[i-1][j]`, with `1` at both ends of every row. Each row
+  is built from the previous one in a single pass.
+- O(n²) with O(1) extra per row: build each row with the ratio recurrence
+  `C(n,k) = C(n,k-1) * (n-k+1) / k` and push it, instead of calling `nCr` for every cell.
+- `numRows == 0` returns an empty vector — the outer loop simply never runs.
+- The stray double semicolon in `temp.push_back(...);;` is harmless but worth cleaning up.
+- The 1-indexed bounds (`i = 1..n`, `j = 1..i`) paired with `nCr(i-1, j-1)` are correct; converting
+  only one side to 0-indexed is the usual bug.
