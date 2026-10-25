@@ -751,3 +751,53 @@ bottom-row loop would then run with `bottom = 0` and `top = 1`, and without the 
   `ans.push_back(...)` with `matrix[top][i] = next++`.
 - The traversal is clockwise starting at the top-left corner; counter-clockwise is the same code
   with the loop order reversed.
+
+## Pascal's Triangle Element
+
+The value at row `r`, column `c` of Pascal's triangle (1-indexed) is `C(r-1, c-1)`. Compute it
+multiplicatively in `O(min(c, r - c))` steps instead of building the whole triangle.
+
+```cpp
+class Solution {
+public:
+    int pascalTriangleI(int r, int c) {
+        return nCr(r - 1, c - 1);
+    }
+
+    int nCr(int n, int r) {
+        if (r > n - r) r = n - r;
+        if (r == 1) return n;
+
+        int res = 1;
+        for (int i = 0; i < r; i++) {
+            res = res * (n - i);
+            res = res / (i + 1);
+        }
+        return res;
+    }
+};
+```
+
+| Time | Space | Passes |
+| --- | --- | --- |
+| O(min(c, r − c)) | O(1) | 1 |
+
+**Interview notes**
+
+- `C(n, r) = C(n, n - r)`, so reducing `r` first halves the loop and keeps the intermediate
+  products small — the loop then runs `min(r, n - r)` times. This is the single most important line
+  in the function.
+- `res = res * (n - i) / (i + 1)` is **exact at every step**: after iteration `i` the value is
+  `C(n, i + 1)`, and the running product is always divisible by `i + 1` when divided in this order.
+  Never reorder it to `res / (i + 1) * (n - i)` — that truncates.
+- `if (r == 1) return n;` is only a shortcut; the loop already returns `1` for `r == 0` and `n` for
+  `r == 1`. Keep it only if it makes the intent clearer.
+- **Overflow**: `res * (n - i)` overflows `int` once `n` reaches about 30 (for example
+  `C(30, 14) * 16 > INT_MAX`), even when the final coefficient still fits. Use `long long` for
+  `res`, or the `res = res * (n - r + i) / i` form, which multiplies smaller factors.
+- The 1-indexed conversion `nCr(r - 1, c - 1)` is easy to get wrong. If the API is 0-indexed, call
+  `nCr(r, c)` directly; LeetCode's "Pascal's Triangle" is 1-indexed.
+- For a whole row, the DP recurrence `row[j] += row[j - 1]` is simpler and O(r) space; use `nCr`
+  when only one cell is needed.
+- Guard `r < 0 || r > n` (return `0`) if the inputs can be out of range: the symmetry step turns
+  `n = 0, r = 1` into `r = -1`, and the function would return `1` instead of `0`.
