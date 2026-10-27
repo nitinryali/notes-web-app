@@ -3,12 +3,9 @@ title: Arrays
 description: Interview problems with the code, the complexity and the two or three points that matter.
 section: dsa
 order: 2
-tags: [arrays, two-pointers, traversal]
-updated: 2026-10-25
+tags: [arrays, two-pointers, traversal, matrix]
+updated: 2026-10-27
 ---
-
-One section per problem: the statement, the code to reproduce from memory, the complexity, and the
-two or three points worth remembering. STL shortcuts live in the **STL** note.
 
 ## Second Largest Element
 
@@ -521,6 +518,176 @@ public:
 - `if (left <= right)` does the same for a single remaining column (`m × 1` case).
 - Update the boundaries after their loop, and keep `m` and `n` separate for rectangular matrices.
 
+## Rotate Matrix
+
+Rotate a square matrix 90° clockwise, in place: transpose across the main diagonal, then reverse
+every row.
+
+```cpp tab="90° clockwise"
+class Solution {
+public:
+    void rotateMatrix(vector<vector<int>>& matrix) {
+        int n = matrix.size();
+
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < i; j++) {
+                swap(matrix[i][j], matrix[j][i]);
+            }
+        }
+
+        for (int i = 0; i < n; i++) {
+            reverse(matrix[i].begin(), matrix[i].end());
+        }
+    }
+};
+```
+
+```cpp tab="k × 90°"
+class Solution {
+public:
+    void rotate90(vector<vector<int>>& matrix) {
+        int n = matrix.size();
+
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < i; j++) {
+                swap(matrix[i][j], matrix[j][i]);
+            }
+        }
+
+        for (int i = 0; i < n; i++) {
+            reverse(matrix[i].begin(), matrix[i].end());
+        }
+    }
+
+    // k > 0 rotates clockwise, k < 0 rotates counter-clockwise.
+    void rotateMatrix(vector<vector<int>>& matrix, int k) {
+        k = ((k % 4) + 4) % 4;
+
+        for (int t = 0; t < k; t++) {
+            rotate90(matrix);
+        }
+    }
+};
+```
+
+| Operation | Time | Space |
+| --- | --- | --- |
+| 90° | O(n²) | O(1) |
+| k × 90° | O(n²) | O(1) |
+
+- `j < i` walks the lower triangle only; `j < n` would swap every pair twice and undo the transpose.
+- `((k % 4) + 4) % 4` normalises negatives (`-1 → 3`) and collapses four turns to none, so at most
+  three passes are ever made.
+- `k = 2` is just two reversals, `k = 3` is transpose + reversing the row order; a rectangular matrix
+  cannot be rotated in place (`out[j][rows - 1 - i] = matrix[i][j]` needs a new matrix).
+
+## Set Matrix Zeroes
+
+If an element is `0`, set its entire row and column to `0`, in place.
+
+```cpp tab="Brute force"
+class Solution {
+public:
+    void setZeroes(vector<vector<int>>& matrix) {
+        int m = matrix.size();
+        int n = matrix[0].size();
+        vector<pair<int, int>> cords;
+
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if (matrix[i][j] == 0) {
+                    cords.push_back({i, j});
+                }
+            }
+        }
+
+        for (auto it : cords) {
+            int row = it.first;
+            int col = it.second;
+
+            for (int i = 0; i < n; i++) {
+                matrix[row][i] = 0;
+            }
+
+            for (int j = 0; j < m; j++) {
+                matrix[j][col] = 0;
+            }
+        }
+    }
+};
+```
+
+```cpp tab="O(1) space"
+class Solution {
+public:
+    void setZeroes(vector<vector<int>>& matrix) {
+        int m = matrix.size();
+        int n = matrix[0].size();
+
+        bool firstRowZero = false;
+        bool firstColZero = false;
+
+        // Remember whether row 0 / column 0 were zero before using them as markers.
+        for (int i = 0; i < m; i++) {
+            if (matrix[i][0] == 0) {
+                firstColZero = true;
+                break;
+            }
+        }
+
+        for (int j = 0; j < n; j++) {
+            if (matrix[0][j] == 0) {
+                firstRowZero = true;
+                break;
+            }
+        }
+
+        // Mark inside the matrix, skipping row 0 and column 0.
+        for (int i = 1; i < m; i++) {
+            for (int j = 1; j < n; j++) {
+                if (matrix[i][j] == 0) {
+                    matrix[i][0] = 0;
+                    matrix[0][j] = 0;
+                }
+            }
+        }
+
+        // Apply the markers, again skipping row 0 and column 0.
+        for (int i = 1; i < m; i++) {
+            for (int j = 1; j < n; j++) {
+                if (matrix[i][0] == 0 || matrix[0][j] == 0) {
+                    matrix[i][j] = 0;
+                }
+            }
+        }
+
+        if (firstRowZero) {
+            for (int j = 0; j < n; j++) {
+                matrix[0][j] = 0;
+            }
+        }
+
+        if (firstColZero) {
+            for (int i = 0; i < m; i++) {
+                matrix[i][0] = 0;
+            }
+        }
+    }
+};
+```
+
+| Approach | Time | Space |
+| --- | --- | --- |
+| Brute force | O(m·n + k·(m + n)) | O(k) |
+| First row / column markers | O(m·n) | O(1) |
+
+- Both versions need every original zero recorded or marked **before** writing, otherwise the zeros
+  you create get treated as new ones — the `cords` vector exists for exactly that reason.
+- Brute force costs O(k·(m + n)) for `k` zeros and is O(m·n·(m + n)) when the matrix is all zeros;
+  the marker version is a flat two passes plus the flags.
+- `firstRowZero` / `firstColZero` are mandatory: `matrix[i][0]` and `matrix[0][j]` are both markers
+  **and** real cells, so only the flags know which of them must be zeroed last.
+
 ## Pascal's Triangle
 
 Three variants: a single element, one row, and the whole triangle.
@@ -636,3 +803,312 @@ public:
 - `long long` in `nCr` avoids the intermediate overflow from the single-element version.
 - O(n³) as written; the DP `ans[i][j] = ans[i-1][j-1] + ans[i-1][j]` is the expected O(n²).
 - The 1-indexed bounds (`i = 1..n`, `j = 1..i`) must pair with `nCr(i-1, j-1)`.
+
+## Two Sum
+
+Return the indices of the two numbers that add up to `target`. Exactly one answer is assumed.
+
+```cpp tab="Hash map"
+class Solution {
+public:
+    vector<int> twoSum(vector<int>& nums, int target) {
+        unordered_map<int, int> mp;
+        int n = nums.size();
+
+        for (int i = 0; i < n; i++) {
+            int k = target - nums[i];
+
+            if (mp.find(k) != mp.end()) {
+                return {i, mp[k]};
+            }
+
+            mp[nums[i]] = i;
+        }
+
+        return {-1, -1};
+    }
+};
+```
+
+```cpp tab="Sort + two pointers"
+class Solution {
+public:
+    vector<int> twoSum(vector<int>& nums, int target) {
+        int n = nums.size();
+        vector<pair<int, int>> numIdx;
+
+        for (int i = 0; i < n; i++) {
+            numIdx.push_back({nums[i], i});
+        }
+
+        sort(numIdx.begin(), numIdx.end());
+
+        int left = 0, right = n - 1;
+
+        while (left < right) {
+            int s = numIdx[left].first + numIdx[right].first;
+
+            if (s == target) {
+                return {numIdx[left].second, numIdx[right].second};
+            } else if (s < target) {
+                left++;
+            } else {
+                right--;
+            }
+        }
+
+        return {-1, -1};
+    }
+};
+```
+
+| Approach | Time | Space |
+| --- | --- | --- |
+| Hash map | O(n) expected | O(n) |
+| Sort + two pointers | O(n log n) | O(n) |
+
+- Look up `target - nums[i]` **before** inserting `nums[i]`: `[3, 3]` with target `6` only works because the
+  first `3` is already in the map, and inserting first would let an index pair with itself.
+- `pair` sorts by value, then by index, so duplicates stay distinct entries and the original indices
+  survive; the price is the O(n) `numIdx` vector. On already-sorted values the two pointers are O(n)
+  time and O(1) space, which is the usual reason to prefer them.
+- The map returns `{i, mp[k]}` — indices in decreasing order — and `{-1, -1}` is only a sentinel because
+  the statement guarantees a solution; swap the pair if ascending order is expected.
+
+## Three Sum
+
+Return every unique triplet that sums to `0`.
+
+```cpp tab="Sort + two pointers"
+class Solution {
+public:
+    vector<vector<int>> threeSum(vector<int>& nums) {
+        vector<vector<int>> ans;
+        sort(nums.begin(), nums.end());
+        int n = nums.size();
+
+        for (int i = 0; i < n; i++) {
+            if (i > 0 && nums[i] == nums[i - 1]) continue;
+
+            int j = i + 1;
+            int k = n - 1;
+
+            while (j < k) {
+                int sum = nums[i] + nums[j] + nums[k];
+
+                if (sum < 0) {
+                    j++;
+                } else if (sum > 0) {
+                    k--;
+                } else {
+                    ans.push_back({nums[i], nums[j], nums[k]});
+                    j++;
+                    k--;
+
+                    while (j < k && nums[j] == nums[j - 1]) j++;
+                    while (j < k && nums[k] == nums[k + 1]) k--;
+                }
+            }
+        }
+
+        return ans;
+    }
+};
+```
+
+```cpp tab="Hash set + set"
+class Solution {
+public:
+    vector<vector<int>> threeSum(vector<int>& nums) {
+        set<vector<int>> tripletSet;
+        int n = nums.size();
+
+        for (int i = 0; i < n; i++) {
+            set<int> hashset;
+
+            for (int j = i + 1; j < n; j++) {
+                int third = -(nums[i] + nums[j]);
+
+                if (hashset.find(third) != hashset.end()) {
+                    vector<int> temp = {nums[i], nums[j], third};
+                    sort(temp.begin(), temp.end());
+                    tripletSet.insert(temp);
+                }
+
+                hashset.insert(nums[j]);
+            }
+        }
+
+        vector<vector<int>> ans(tripletSet.begin(), tripletSet.end());
+        return ans;
+    }
+};
+```
+
+| Approach | Time | Space |
+| --- | --- | --- |
+| Sort + two pointers | O(n²) | O(1) extra |
+| Hash set + set | O(n² log u) | O(n + u) |
+
+- The anchor skip (`i > 0 && nums[i] == nums[i - 1]`) and the two post-hit `while` loops dedupe at the
+  source; drop them and `[0, 0, 0, 0]` returns the same triplet four times.
+- After `j++` / `k--` the loops compare against `nums[j - 1]` and `nums[k + 1]`, so `j < k` must be
+  re-checked inside each `while` — otherwise the indices cross and read past the vector.
+- The set version is slower by a `log u` factor: it sorts each candidate and pays `O(log u)` comparisons
+  per `set<vector<int>>` insert on top of the O(n²) scan, while the inner `hashset` adds O(n) space.
+
+## Sort 0s, 1s and 2s
+
+Sort an array containing only `0`, `1` and `2` in one pass, in place — the Dutch national flag.
+
+```cpp
+class Solution {
+public:
+    void sortZeroOneTwo(vector<int>& nums) {
+        int n = nums.size();
+
+        int low = 0, mid = 0, high = n - 1;
+
+        while (mid <= high) {
+            if (nums[mid] == 0) {
+                swap(nums[low], nums[mid]);
+                low++;
+                mid++;
+            } else if (nums[mid] == 1) {
+                mid++;
+            } else {
+                swap(nums[mid], nums[high]);
+                high--;
+            }
+        }
+    }
+};
+```
+
+| Time | Space |
+| --- | --- |
+| O(n) | O(1) |
+
+- The invariant: `[0, low)` is `0`s, `[low, mid)` is `1`s, `(high, n-1]` is `2`s, and `[mid, high]` is
+  unexamined — so `mid <= high` is required, since `mid == high` still has one element left to classify.
+- Swapping with `high` must **not** advance `mid`: the value pulled in from the right has not been looked
+  at yet, while the value swapped into `low` is always a `1` (or `mid` itself), so `mid++` is safe there.
+- One pass, no counting: a two-pass count of `0`s and `1`s is also O(n) but writes the array twice and
+  needs two counters.
+
+## Maximum Subarray
+
+Return the largest sum of any contiguous subarray — Kadane's algorithm.
+
+```cpp tab="Kadane"
+class Solution {
+public:
+    int maxSubArray(vector<int>& nums) {
+        int n = nums.size();
+        int ans = INT_MIN;
+        int cur = 0;
+
+        for (int i = 0; i < n; i++) {
+            cur += nums[i];
+            ans = max(ans, cur);
+
+            if (cur < 0) cur = 0;
+        }
+
+        return ans;
+    }
+};
+```
+
+```cpp tab="Kadane + indices"
+class Solution {
+public:
+    int maxSubArray(vector<int>& nums) {
+        int start = 0;
+        int ansStart = -1, ansEnd = -1;
+        long long sum = 0;
+        long long maxi = LLONG_MIN;
+
+        for (int i = 0; i < nums.size(); i++) {
+            if (sum == 0) start = i;
+
+            sum += nums[i];
+
+            if (sum > maxi) {
+                maxi = sum;
+                ansStart = start;
+                ansEnd = i;
+            }
+
+            if (sum < 0) sum = 0;
+        }
+
+        // ansStart and ansEnd bound the winning subarray.
+        return (int)maxi;
+    }
+};
+```
+
+| Time | Space |
+| --- | --- |
+| O(n) | O(1) |
+
+- `ans = INT_MIN` and not `0`: an all-negative array must return its largest (least negative) element,
+  which is also why `ans` is updated before the reset.
+- The reset condition is `cur < 0`, so a negative running sum still competes for the answer; resetting
+  first would lose the single-element case.
+- `if (sum == 0) start = i` begins a fresh run — a zero prefix adds nothing — and `ansStart` / `ansEnd`
+  are updated together with `maxi`, so they always bound the winning window.
+- `sum` and `maxi` are `long long` because the running total can pass `INT_MAX` for large inputs; the
+  narrowing cast happens once, at the return.
+
+## Next Permutation
+
+Rearrange `nums` into the next lexicographically greater permutation, in place. If none exists, wrap
+around to the smallest (ascending) order.
+
+```cpp
+class Solution {
+public:
+    void nextPermutation(vector<int>& nums) {
+        int n = nums.size();
+        int x = -1;
+
+        // 1. Rightmost index that can still grow.
+        for (int j = n - 2; j >= 0; j--) {
+            if (nums[j] < nums[j + 1]) {
+                x = j;
+                break;
+            }
+        }
+
+        if (x == -1) {
+            reverse(nums.begin(), nums.end());
+            return;
+        }
+
+        // 2. Swap with the rightmost value greater than nums[x].
+        for (int i = n - 1; i > x; i--) {
+            if (nums[i] > nums[x]) {
+                swap(nums[i], nums[x]);
+                break;
+            }
+        }
+
+        // 3. The suffix is still non-increasing; reverse it to make it smallest.
+        reverse(nums.begin() + x + 1, nums.end());
+    }
+};
+```
+
+| Time | Space |
+| --- | --- |
+| O(n) | O(1) |
+
+- `x` is the last index with `nums[x] < nums[x + 1]`; if every pair is non-increasing the array is the
+  largest permutation, which is why `x == -1` just reverses everything.
+- Scanning from the right for `nums[i] > nums[x]` finds the **smallest** such value, because the suffix
+  is non-increasing — the first hit is the right answer, so `break` is correct.
+- The suffix stays non-increasing after the swap, so reversing it sorts it ascending in O(n); duplicates
+  need no special handling. `next_permutation(nums.begin(), nums.end())` from `<algorithm>` is the same
+  three steps.
