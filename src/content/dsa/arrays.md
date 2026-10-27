@@ -998,7 +998,7 @@ public:
 
 ## Maximum Subarray
 
-Return the largest sum of any contiguous subarray — Kadane's algorithm.
+Return the largest sum of any contiguous subarray — Kadane's algorithm — or the subarray itself.
 
 ```cpp tab="Kadane"
 class Solution {
@@ -1020,12 +1020,14 @@ public:
 };
 ```
 
-```cpp tab="Kadane + indices"
+```cpp tab="Kadane + subarray"
 class Solution {
 public:
-    int maxSubArray(vector<int>& nums) {
+    vector<int> maxSubArray(vector<int>& nums) {
+        if (nums.empty()) return {};
+
         int start = 0;
-        int ansStart = -1, ansEnd = -1;
+        int ansStart = 0, ansEnd = 0;
         long long sum = 0;
         long long maxi = LLONG_MIN;
 
@@ -1043,24 +1045,25 @@ public:
             if (sum < 0) sum = 0;
         }
 
-        // ansStart and ansEnd bound the winning subarray.
-        return (int)maxi;
+        // ansStart and ansEnd are inclusive.
+        return vector<int>(nums.begin() + ansStart, nums.begin() + ansEnd + 1);
     }
 };
 ```
 
 | Time | Space |
 | --- | --- |
-| O(n) | O(1) |
+| O(n) | O(1) extra, O(n) with output |
 
 - `ans = INT_MIN` and not `0`: an all-negative array must return its largest (least negative) element,
   which is also why `ans` is updated before the reset.
 - The reset condition is `cur < 0`, so a negative running sum still competes for the answer; resetting
   first would lose the single-element case.
 - `if (sum == 0) start = i` begins a fresh run — a zero prefix adds nothing — and `ansStart` / `ansEnd`
-  are updated together with `maxi`, so they always bound the winning window.
-- `sum` and `maxi` are `long long` because the running total can pass `INT_MAX` for large inputs; the
-  narrowing cast happens once, at the return.
+  are updated together with `maxi`, so they always bound the winning window. Both are inclusive, hence
+  the `+ 1` in the end iterator.
+- The empty guard is required: with `ansStart = ansEnd = 0` the slice would step past the end of an
+  empty vector. `sum` and `maxi` stay `long long` so the running total cannot overflow.
 
 ## Next Permutation
 
