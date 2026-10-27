@@ -393,6 +393,91 @@ public:
 - Verify each survivor with `count(...) > n / k` — the slots only produce candidates.
 - With fixed `k` (2 or 3) the loop over slots is constant, so the bound is O(n).
 
+### More than n/3
+
+Return every element that appears more than `⌊n/3⌋` times. At most two can exist.
+
+```cpp tab="Boyer-Moore"
+class Solution {
+public:
+    vector<int> majorityElementTwo(vector<int>& nums) {
+        int n = nums.size();
+        int x = 0, y = 0;
+        int el1 = INT_MIN, el2 = INT_MIN;
+
+        for (int i = 0; i < n; i++) {
+            if (x == 0 && el2 != nums[i]) {
+                x = 1;
+                el1 = nums[i];
+            } else if (y == 0 && el1 != nums[i]) {
+                y = 1;
+                el2 = nums[i];
+            } else if (nums[i] == el1) {
+                x++;
+            } else if (nums[i] == el2) {
+                y++;
+            } else {
+                x--;
+                y--;
+            }
+        }
+
+        x = 0, y = 0;
+
+        for (int i = 0; i < n; i++) {
+            if (nums[i] == el1) x++;
+            if (nums[i] == el2) y++;
+        }
+
+        int mini = n / 3 + 1;
+        vector<int> result;
+
+        if (x >= mini) result.push_back(el1);
+        if (y >= mini && el1 != el2) result.push_back(el2);
+
+        return result;
+    }
+};
+```
+
+```cpp tab="Hash map"
+class Solution {
+public:
+    vector<int> majorityElementTwo(vector<int>& nums) {
+        int n = nums.size();
+        vector<int> result;
+        unordered_map<int, int> mpp;
+        int mini = n / 3 + 1;
+
+        for (int i = 0; i < n; i++) {
+            mpp[nums[i]]++;
+
+            if (mpp[nums[i]] == mini) {
+                result.push_back(nums[i]);
+            }
+
+            if (result.size() == 2) break;
+        }
+
+        return result;
+    }
+};
+```
+
+| Approach | Time | Space |
+| --- | --- | --- |
+| Boyer-Moore (2 slots) | O(n) | O(1) |
+| Hash map | O(n) | O(n) |
+
+- The `el1 != nums[i]` / `el2 != nums[i]` guards stop both slots from holding the same value, which
+  would waste a slot and let one candidate survive on a merged count. The second pass is not optional:
+  the slots only produce candidates.
+- `mini = n / 3 + 1` encodes the strict `> n/3` bound; `el1 != el2` guards the case where both slots
+  ended up equal, which would otherwise push the same answer twice.
+- `INT_MIN` doubles as the "empty slot" marker, so an input containing `INT_MIN` can confuse the first
+  pass — use a `bool` flag or a `long long` sentinel if the constraints allow it. The hash map version
+  pays O(n) space for none of these subtleties and can stop as soon as it has two answers.
+
 ## Leaders in an Array
 
 Return the leaders — elements greater than everything to their right — in their original order.
