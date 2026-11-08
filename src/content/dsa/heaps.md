@@ -534,6 +534,272 @@ public:
 - It destroys the input order. A size-`k` min-heap is O(n log k) and leaves the array intact;
   quickselect is O(n) average, O(n²) worst.
 
+## Kth Largest in a Stream
+
+Design a class that returns the k-th largest value seen so far, including after each `add`.
+
+```cpp
+class KthLargest {
+   private:
+    priority_queue<int, vector<int>, greater<int>> pq;
+    int K;
+
+   public:
+    KthLargest(int k, vector<int>& nums) {
+        K = k;
+
+        for (int i = 0; i < nums.size(); i++) {
+            if (pq.size() < K) {
+                pq.push(nums[i]);
+            } else if (nums[i] > pq.top()) {
+                pq.pop();
+                pq.push(nums[i]);
+            }
+        }
+    }
+
+    int add(int val) {
+        if (pq.size() < K) {
+            pq.push(val);
+        } else if (val > pq.top()) {
+            pq.pop();
+            pq.push(val);
+        }
+        return pq.top();
+    }
+};
+```
+
+| Operation | Time | Space |
+| --- | --- | --- |
+| Constructor | O(n log k) | O(k) |
+| `add` | O(log k) | O(k) |
+
+- A **min**-heap keeps the k largest values, so its root is the smallest of them — exactly the k-th
+  largest, and `add` only has to touch the heap when the new value beats the root.
+- The constructor uses the same rule as `add`: fill while `size() < k`, replace afterwards. The input
+  order does not matter.
+- Sorting and taking `nums[k - 1]` is O(n log n) **per query** — fine for a one-off array, useless for a
+  stream where each `add` would re-sort.
+
+## Top K Frequent Elements
+
+Return the `k` most frequent values.
+
+```cpp
+class Solution {
+public:
+    vector<int> topKFrequent(const vector<int>& nums, int k) {
+        unordered_map<int, int> freq;
+        for (int num : nums) freq[num]++;
+
+        priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> minHeap;
+
+        for (auto& it : freq) {
+            minHeap.push({it.second, it.first});
+            if (minHeap.size() > k) minHeap.pop();
+        }
+
+        vector<int> result;
+        while (!minHeap.empty()) {
+            result.push_back(minHeap.top().second);
+            minHeap.pop();
+        }
+
+        return result;
+    }
+};
+```
+
+| Time | Space |
+| --- | --- |
+| O(n log k) | O(n + k) |
+
+- The heap holds `k` entries and evicts the smallest count, so it ends up containing the top `k` — the
+  same "keep the best k" pattern as the stream problem.
+- `pair` comparison is lexicographic, so `{count, value}` ranks by frequency and uses the value only as
+  a tie-breaker; the result therefore comes out in **ascending** frequency, reverse it if needed.
+- Counting is O(n) and the heap work is O(log k) per distinct value; bucketing by frequency gives O(n)
+  time and O(n) space without the `log k`.
+
+## Merge K Sorted Lists
+
+Merge `k` sorted linked lists into one sorted list.
+
+```cpp
+class Solution {
+public:
+    ListNode* mergeKSortedLists(vector<ListNode*>& heads) {
+        auto cmp = [](ListNode* a, ListNode* b) {
+            return a->val > b->val;
+        };
+        priority_queue<ListNode*, vector<ListNode*>, decltype(cmp)> pq(cmp);
+
+        for (auto node : heads) {
+            if (node) pq.push(node);
+        }
+
+        ListNode dummy(0);
+        ListNode* tail = &dummy;
+
+        while (!pq.empty()) {
+            ListNode* smallest = pq.top();
+            pq.pop();
+
+            tail->next = smallest;
+            tail = tail->next;
+
+            if (smallest->next) pq.push(smallest->next);
+        }
+
+        return dummy.next;
+    }
+};
+```
+
+| Time | Space |
+| --- | --- |
+| O(N log k) | O(k) |
+
+- `priority_queue` orders with "less" semantics, so a min-heap needs the `>` comparator — writing `<`
+  turns it into a max-heap and the merge silently returns the wrong list.
+- `decltype(cmp)` is only a type; the comparator object still has to be passed to the constructor as
+  `pq(cmp)`, because a lambda has no default constructor.
+- The dummy node removes the "first node" special case, and pushing `smallest->next` after each pop keeps
+  the heap at `k` nodes, so no list is ever fully copied into it.
+
+## Median of a Data Stream
+
+Design a class with `addNum` and `findMedian`.
+
+```cpp tab="Sort on demand"
+class MedianFinder {
+private:
+    vector<int> nums;
+
+public:
+    MedianFinder() {}
+
+    void addNum(int num) {
+        nums.push_back(num);
+    }
+
+    double findMedian() {
+        if (nums.empty()) return 0.0;
+
+        vector<int> sortedNums = nums;
+        sort(sortedNums.begin(), sortedNums.end());
+        int n = (int)sortedNums.size();
+
+        if (n % 2 == 1) {
+            return (double)sortedNums[n / 2];
+        } else {
+            double a = sortedNums[n / 2 - 1];
+            double b = sortedNums[n / 2];
+            return (a + b) / 2.0;
+        }
+    }
+};
+```
+
+```cpp tab="Two heaps"
+class MedianFinder {
+public:
+    priority_queue<int> maxHeap;
+    priority_queue<int, vector<int>, greater<int>> minHeap;
+
+    MedianFinder() {}
+
+    void addNum(int num) {
+        if (maxHeap.empty() || num <= maxHeap.top())
+            maxHeap.push(num);
+        else
+            minHeap.push(num);
+
+        if (maxHeap.size() > minHeap.size() + 1) {
+            minHeap.push(maxHeap.top());
+            maxHeap.pop();
+        } else if (minHeap.size() > maxHeap.size() + 1) {
+            maxHeap.push(minHeap.top());
+            minHeap.pop();
+        }
+    }
+
+    double findMedian() {
+        if (maxHeap.size() == minHeap.size())
+            return (maxHeap.top() + minHeap.top()) / 2.0;
+
+        return (maxHeap.size() > minHeap.size()) ? maxHeap.top() : minHeap.top();
+    }
+};
+```
+
+| Operation | Sort on demand | Two heaps |
+| --- | --- | --- |
+| `addNum` | O(1) | O(log n) |
+| `findMedian` | O(n log n) | O(1) |
+| Space | O(n) | O(n) |
+
+- The max-heap holds the smaller half (its root is the lower median) and the min-heap the larger half;
+  keeping the sizes within one of each other is what makes the median a two-value lookup.
+- Insert against `maxHeap.top()`, the boundary between halves, then move a single element across when a
+  side grows by two — never rebalance by rebuilding.
+- For an even count the answer is the average of the two roots, so use `/ 2.0`: integer division would
+  truncate the median.
+
+## Maximum Sum Combination
+
+Return the `k` largest sums of the form `nums1[i] + nums2[j]`, with each pair used once.
+
+```cpp
+class Solution {
+public:
+    vector<int> maxSumCombinations(vector<int>& nums1, vector<int>& nums2, int k) {
+        sort(nums1.begin(), nums1.end(), greater<int>());
+        sort(nums2.begin(), nums2.end(), greater<int>());
+
+        priority_queue<pair<int, pair<int, int>>> pq;
+        set<pair<int, int>> visited;
+
+        pq.push({nums1[0] + nums2[0], {0, 0}});
+        visited.insert({0, 0});
+
+        vector<int> res;
+
+        while (k-- && !pq.empty()) {
+            auto [sum, idx] = pq.top();
+            pq.pop();
+
+            int i = idx.first, j = idx.second;
+            res.push_back(sum);
+
+            if (i + 1 < nums1.size() && !visited.count({i + 1, j})) {
+                pq.push({nums1[i + 1] + nums2[j], {i + 1, j}});
+                visited.insert({i + 1, j});
+            }
+
+            if (j + 1 < nums2.size() && !visited.count({i, j + 1})) {
+                pq.push({nums1[i] + nums2[j + 1], {i, j + 1}});
+                visited.insert({i, j + 1});
+            }
+        }
+
+        return res;
+    }
+};
+```
+
+| Time | Space |
+| --- | --- |
+| O(n log n + m log m + k log k) | O(k) |
+
+- Sort both arrays descending so the best pair is `(0, 0)` and every other pair is one step down in
+  either index — that is what makes a best-first traversal possible at all.
+- `visited` is essential: `(i + 1, j)` and `(i, j + 1)` both reach `(i + 1, j + 1)`, so without the set
+  the heap grows exponentially and the same sum is emitted twice.
+- `k-- && !pq.empty()` stops at `k` answers or when the pairs run out, which covers `k > n·m` and an
+  empty input; the max-heap's pair ordering compares the sum first, so `top()` is always the next best.
+
 ## Complexities at a Glance
 
 | Operation | Time |
